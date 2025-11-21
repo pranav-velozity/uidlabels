@@ -7,11 +7,18 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from render_labels import run_pdf_by_po  # import from same repo
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or restrict to ["https://portrait3676uid.netlify.app"]
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/render/pdf-by-po")
 async def render_pdf_by_po(file: UploadFile = File(...)):
