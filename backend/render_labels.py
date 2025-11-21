@@ -173,33 +173,34 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     elif sku:
         c.drawRightString(sku_col_x, right_block_y - BODY_PT * 1.4, sku)
 
-    # UID centered below DM+numbers
-    # We'll set it about 2mm below the bottom of the top DM block
-    top_block_bottom = PAGE_H - pad_pt - dm_size_pt  # approximate bottom of DM block
-    uid_y = top_block_bottom - UID_OFFSET_BELOW_TOP_MM * mm
+    # UID centered a bit below the top DM block
+    # top_dm_y is the *bottom* edge of the top DataMatrix
+    top_dm_bottom_y = top_dm_y
+    uid_y = top_dm_bottom_y - 3.0 * mm  # 3 mm gap below DM
     c.setFont("Helvetica", BODY_PT)
     c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
     # ---- BARCODE SECTION ----
-    # Under UID, centered; width almost full label
+    # Place barcode clearly below UID, spanning almost full width
     bc_full_w = PAGE_W - pad_pt * 2
-    bc_y = uid_y - BODY_PT * 1.6  # going downwards in ReportLab means subtract
+    bc_y = uid_y - 9.0 * mm        # 9 mm below UID
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
 
-    # Human-readable digits under barcode
-    hr_y = bc_y - (BODY_PT * 1.2)
+    # Human-readable digits just under the barcode bars
     human_text = ean or sku or ""
+    hr_y = bc_y - 2.0 * mm         # 2 mm below barcode
     if human_text:
         c.setFont("Helvetica", BODY_PT)
         c.drawCentredString(PAGE_W / 2.0, hr_y, human_text)
 
-    # Divider line below human-readable text
-    divider_y = hr_y - DIVIDER_GAP_MM * mm
+    # Divider line a bit below the human-readable text
+    divider_y = hr_y - 2.0 * mm    # 2 mm gap
     c.setLineWidth(0.3)
     c.line(pad_pt, divider_y, PAGE_W - pad_pt, divider_y)
 
     # ---- BOTTOM TEXT ----
-    text_start_y = divider_y - BOTTOM_TEXT_TOP_GAP_MM * mm
+    text_start_y = divider_y - 2.0 * mm  # start product text 2 mm below divider
+
 
     # Simple wrapping for Product into up to 2 lines
     c.setFont("Helvetica", BODY_PT)
