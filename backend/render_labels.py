@@ -157,7 +157,6 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     right_block_y = PAGE_H - pad_pt - (BODY_PT * mm / 3.0)  # slightly below top
 
     c.setFont("Helvetica", BODY_PT)
-    c.setTextRenderMode(0)  # fill text
     c.setFillColorRGB(0, 0, 0)
     c.setStrokeColorRGB(0, 0, 0)
     c.setLineWidth(0.5)
