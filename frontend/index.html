@@ -1,1 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>UID Label Builder · 36×76mm</title>
+  <meta name="description" content="Upload Excel and generate UID labels (36×76mm, DataMatrix + Code128).">
 
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- XLSX, JsBarcode -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+  <!-- JSZip + pdf-lib as globals -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+  <!-- bwip-js (DataMatrix) as global 'bwipjs' -->
+  <script src="https://cdn.jsdelivr.net/npm/bwip-js@3.4.3/dist/bwip-js-min.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen">
+
+<div class="max-w-7xl mx-auto px-6 py-6 space-y-4">
+  <!-- Header -->
+  <header class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
+        UID Label Builder
+        <span class="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-[#990033] border border-[#f1ccd8]">
+          36 × 76 mm · Portrait
+        </span>
+      </h1>
+      <p class="text-xs text-slate-600 mt-1">
+        Excel in → UIDs out. DataMatrix + Code128 labels ready for print.
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2 text-[11px]">
+      <span class="inline-flex items-center rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-[#990033] border border-[#f1ccd8]">
+        UID: <span class="ml-1 font-mono text-[#990033]">TIBC + 9 chars</span>
+      </span>
+
+      <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700">
+        DM payload:
+        <span class="ml-1 font-mono text-[#990033]">STYLE-SKU;UID</span>
+      </span>
+    </div>
+  </header>
+
+  <main class="grid gap-8 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start">
+    <!-- Controls / left panel -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm space-y-6 min-w-[640px]">
+      <!-- Upload row -->
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-slate-900">
+          Upload label Excel
+        </label>
+        <input id="excel-file" type="file" accept=".xlsx,.xls,.csv"
+               class="block w-full text-sm text-slate-800
+                      file:mr-3 file:rounded-lg file:border-0 file:bg-[#990033]
+                      file:px-3 file:py-1.5 file:text-sm file:font-medium
+                      file:text-white hover:file:bg-[#7a0029]
+                      cursor-pointer bg-slate-100 border border-slate-300 rounded-lg px-2 py-1.5"/>
+        <p class="text-[11px] text-slate-500">
+          Columns: <code class="font-mono text-slate-500">PO_Number</code>,
+          <code class="font-mono text-slate-500">SKU_Code</code>,
+          <code class="font-mono text-slate-500">Product</code>,
+          <code class="font-mono text-slate-500">Color</code>,
+          <code class="font-mono text-slate-500">Size</code>,
+          <code class="font-mono text-slate-500">Style</code>,
+          <code class="font-mono text-slate-500">Labels_Count</code>,
+          <code class="font-mono text-slate-500">EAN_Code</code>.
+        </p>
+      </div>
+
+      <!-- Toggles -->
+      <div class="flex flex-wrap items-center gap-4 text-xs text-slate-700">
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+          <input id="toggle-dm" type="checkbox" class="h-4 w-4 rounded border-slate-300 bg-white text-[#990033]" checked>
+          <span>DataMatrix on</span>
+        </label>
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+          <input id="toggle-fast" type="checkbox" class="h-4 w-4 rounded border-slate-300 bg-white text-[#990033]" checked>
+          <span>Fast render</span>
+        </label>
+        <label class="inline-flex items-center gap-2 cursor-pointer">
+          <input id="toggle-bypo" type="checkbox" class="h-4 w-4 rounded border-slate-300 bg-white text-[#990033]" checked>
+          <span>PDFs by PO + Excel</span>
+        </label>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="btn-zip"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-[#2c2c2c] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#444444] shadow-md disabled:opacity-50">
+          PNG ZIP
+        </button>
+
+        <a id="link-pdf" href="#"
+           class="inline-flex items-center gap-1.5 rounded-lg bg-[#2c2c2c] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#444444] shadow-md shadow-slate-700/40 hidden"
+           download>
+          PDF (all)
+        </a>
+
+        <button id="btn-pdfs-bypo"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-[#2c2c2c] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#444444] border border-[#2c2c2c] hidden">
+          PDFs by PO + Excel
+        </button>
+
+        <button id="btn-toggle-png-links"
+                class="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#2c2c2c] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#444444] border border-[#2c2c2c]">
+          PNG links
+        </button>
+      </div>
+
+      <!-- Status line -->
+      <div class="flex items-center justify-between text-[11px] text-slate-500">
+        <span id="status"></span>
+      </div>
+
+      <!-- PNG links -->
+      <div id="png-links"
+           class="hidden max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-2 text-[11px] space-y-1">
+      </div>
+    </section>
+
+    <!-- Preview / right panel -->
+    <section class="bg-[#2c2c2c] border border-slate-300 rounded-2xl p-4 md:p-5 shadow-sm flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-semibold text-white">Preview</h2>
+          <span class="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] text-slate-100 border border-slate-700">
+            first <span id="preview-count">0</span> labels
+          </span>
+        </div>
+        <div class="text-[11px] text-slate-200">
+          Total labels: <span id="total-labels">0</span>
+        </div>
+      </div>
+      <div id="preview-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <!-- label previews injected here -->
+      </div>
+    </section>
+  </main>
+
+  <footer class="text-[11px] text-slate-500 pt-2 border-t border-slate-200">
+    Print at 100% scale (no “fit to page”) for true 36×76 mm labels.
+  </footer>
+</div>
+
+<script>
+(() => {
+  const LABEL_W_MM = 36, LABEL_H_MM = 76, DPI = 300;
+  const mmToPx = mm => Math.round((mm / 25.4) * DPI);
+  const ptToPx = pt => Math.round((pt * DPI) / 72);
+  const mmToPt = mm => (mm / 25.4) * 72;
+
+  const $excel = document.getElementById('excel-file');
+  const $toggleDM = document.getElementById('toggle-dm');
+  const $toggleFast = document.getElementById('toggle-fast');
+  const $previewGrid = document.getElementById('preview-grid');
+  const $previewCount = document.getElementById('preview-count');
+  const $totalLabels = document.getElementById('total-labels');
+  const $status = document.getElementById('status');
+  const $pngLinks = document.getElementById('png-links');
+  const $btnZip = document.getElementById('btn-zip');
+  const $btnTogglePngLinks = document.getElementById('btn-toggle-png-links');
+  const $btnPdfsByPO = document.getElementById('btn-pdfs-bypo');
+  const $linkPdf = document.getElementById('link-pdf');
+
+  let rows = [];
+  let plan = [];
+  let labelImages = [];
+  let pngNames = [];
+  let usedUIDs = new Set();
+
+  function setStatus(msg){ $status.textContent = msg || ''; }
+  function toInt(val, def=0){ const n = Number(val); return Number.isFinite(n) ? Math.round(n) : def; }
+  function sanitizeForName(s){ return (s||'').replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||'PO'; }
+
+  // DataMatrix using bwipjs.toCanvas()
+  async function getDataMatrixCanvas(value){
+    if (!window.bwipjs || typeof bwipjs.toCanvas !== 'function') {
+      console.warn("bwip-js not loaded or missing toCanvas(); skipping DM");
+      return null;
+    }
+    const dm = document.createElement('canvas');
+    try {
+      bwipjs.toCanvas(dm, {
+        bcid: 'datamatrix',
+        text: value,
+        scale: 3,
+        includetext: false,
+        padding: 0
+      });
+    } catch (e) {
+      console.error("DataMatrix generation failed:", e);
+      return null;
+    }
+    const url = dm.toDataURL('image/png', 1);
+    const img = new Image();
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+      img.src = url;
+    });
+    return img;
+  }
+
+  // UID: TIBC + 9 [0-9A-Z]
+  function generateUID(){
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    while(true){
+      let s = 'TIBC';
+      for(let i=0;i<9;i++){
+        s += chars[Math.floor(Math.random()*chars.length)];
+      }
+      if(!usedUIDs.has(s)){ usedUIDs.add(s); return s; }
+    }
+  }
+
+  // Code128 cache
+  const code128Cache = new Map();
+  function getCode128CanvasForSKU(sku){
+    if(code128Cache.has(sku)) return code128Cache.get(sku);
+    const targetH = mmToPx(9); // ~9mm high bars
+    const bc = document.createElement('canvas');
+    JsBarcode(bc, sku, {
+      format: 'CODE128',
+      displayValue: false,
+      font: 'Helvetica',
+      fontSize: 10,
+      height: targetH,
+      margin: mmToPx(0.6),
+      lineColor: '#000',
+      background: '#fff'
+    });
+    code128Cache.set(sku, bc);
+    return bc;
+  }
+
+  function formatSizeVal(sizeVal){
+    const s = String(sizeVal || '').trim();
+    if(!s) return '';
+    return s;
+  }
+
+  const REQUIRED_COLS = ['PO_Number','SKU_Code','Product','Color','Size','Style','Labels_Count'];
+
+  function normalizeRows(raw){
+    return raw.map(r=>{
+      const out={};
+      Object.keys(r||{}).forEach(k=>{
+        const s=String(k||'').replace(/\s+/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+        switch(s){
+          case 'po': case 'po_no': case 'po_number': case 'po#': case 'ponumber':
+            out.PO_Number=r[k]; break;
+          case 'sku': case 'sku_code': case 'product_code': case 'productid':
+            out.SKU_Code=r[k]; break;
+          case 'product': case 'product_name': case 'name':
+            out.Product=r[k]; break;
+          case 'color': case 'colour':
+            out.Color=r[k]; break;
+          case 'size':
+            out.Size=r[k]; break;
+          case 'style': case 'style_code':
+            out.Style=r[k]; break;
+          case 'ean': case 'ean_code': case 'ean13':
+          case 'gtin': case 'gtin13':
+          case 'barcode': case 'barcode_ean':
+            out.EAN_Code=r[k]; break;
+          case 'labels_count': case 'labels': case 'qty': case 'quantity': case 'count':
+            out.Labels_Count=r[k]; break;
+          default:
+            out[k]=r[k];
+        }
+      });
+      out.Labels_Count = toInt(out.Labels_Count, 1);
+      out.PO_Number = String(out.PO_Number ?? "");
+      out.SKU_Code = String(out.SKU_Code ?? "");
+      out.EAN_Code = String(out.EAN_Code ?? "");
+      out.Product = String(out.Product ?? "");
+      out.Color = String(out.Color ?? "");
+      out.Size = formatSizeVal(out.Size);
+      out.Style = String(out.Style ?? "");
+      return out;
+    });
+  }
+
+  function findMissingCols(rows){
+    if(!rows.length) return REQUIRED_COLS.slice();
+    const sample=rows[0]||{};
+    return REQUIRED_COLS.filter(c=> !(c in sample));
+  }
+
+  function totalLabelsFromRows(rows){
+    return rows.reduce((a,r)=> a + Math.max(1, Number(r.Labels_Count)||1), 0);
+  }
+
+  function expandNames(rows){
+    const names=[];
+    rows.forEach(r=>{
+      const count=Math.max(1, Number(r.Labels_Count)||1);
+      const base=sanitizeForName(r.PO_Number||'PO')+"_"+sanitizeForName(r.SKU_Code||'SKU');
+      for(let i=0;i<count;i++){
+        const sfx=count>1?"__N_"+String(i).padStart(2,"0"):"";
+        names.push(base+sfx+".png");
+      }
+    });
+    return names;
+  }
+
+  $excel.addEventListener('change', async (e)=>{
+    const f=e.target.files && e.target.files[0];
+    if(!f){
+      rows=[]; plan=[]; labelImages=[]; pngNames=[];
+      $previewGrid.innerHTML=''; $previewCount.textContent="0"; $totalLabels.textContent="0";
+      setStatus(""); return;
+    }
+    try{
+      setStatus("Reading Excel…");
+      const buf=await f.arrayBuffer();
+      const wb=XLSX.read(buf, {type:'array'});
+      const wsName = wb.SheetNames[0];
+      const ws = wb.Sheets[wsName];
+      const rawRows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+      const norm = normalizeRows(rawRows);
+      const missing = findMissingCols(norm);
+      if(missing.length){
+        alert("Missing required columns: "+missing.join(", "));
+        rows=[]; plan=[]; labelImages=[]; pngNames=[];
+        $previewGrid.innerHTML=''; $previewCount.textContent="0"; $totalLabels.textContent="0";
+        setStatus("Missing columns.");
+        return;
+      }
+      rows = norm;
+      usedUIDs = new Set();
+      const total = totalLabelsFromRows(rows);
+      plan = [];
+      norm.forEach(r=>{
+        const count=Math.max(1, Number(r.Labels_Count)||1);
+        for(let i=0;i<count;i++){
+          const uid = generateUID();
+          plan.push({ row:r, uid });
+        }
+      });
+      pngNames = expandNames(rows);
+      $totalLabels.textContent = String(total);
+      setStatus("Ready · " + total + " labels planned");
+      await renderPreviewGrid();
+    }catch(err){
+      console.error(err);
+      setStatus("Error reading Excel.");
+      alert("Failed to read Excel: "+err.message);
+    }
+  });
+
+  async function renderLabelCanvas(row, useDataMatrix, uid){
+    const W = mmToPx(LABEL_W_MM), H = mmToPx(LABEL_H_MM);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = W;
+    canvas.height = H;
+    if (!ctx) return canvas;
+    ctx.imageSmoothingEnabled = false;
+
+    // Background
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#000';
+
+    // Fonts & metrics
+    const HEAD_PT = 8.0;
+    const BODY_PT = 7.0;
+    const BIG_NUM_PT = 16;
+    const helvBoldHead = ptToPx(HEAD_PT) + 'px Helvetica';
+    const helvBody = ptToPx(BODY_PT) + 'px Helvetica';
+    const helvBig = ptToPx(BIG_NUM_PT) + 'px Helvetica';
+
+    const pad = mmToPx(3);
+    const dmSize = mmToPx(16);
+    const dmQuiet = mmToPx(1.0);
+
+    const sku = String(row.SKU_Code || '').trim();
+    const style = String(row.Style || '').trim();
+    const ean = (row.EAN_Code && String(row.EAN_Code).trim()) || sku;
+    const dmPayload = (useDataMatrix && sku && style && uid) ? `${style}-${sku};${uid}` : null;
+
+    // Split SKU into small+big
+    let skuSmall = sku;
+    let skuBig = '';
+    if (sku.length > 3) {
+      skuSmall = sku.slice(0, sku.length - 3);
+      skuBig = sku.slice(-3);
+    }
+
+    // Load DM once (for top & bottom)
+    let dmImg = null;
+    if (dmPayload) {
+      try {
+        dmImg = await getDataMatrixCanvas(dmPayload);
+      } catch (e) {
+        console.warn('DM render failed', e);
+      }
+    }
+
+    function drawDM(img, x, y, boxSize){
+      if(!img) return;
+      const inner = boxSize - dmQuiet * 2;
+      const scale = Math.min(inner / img.width, inner / img.height, 1);
+      const iw = Math.round(img.width * scale);
+      const ih = Math.round(img.height * scale);
+      const dx = x + dmQuiet + Math.round((inner - iw) / 2);
+      const dy = y + dmQuiet + Math.round((inner - ih) / 2);
+      // no border; quiet zone only
+      ctx.drawImage(img, dx, dy, iw, ih);
+    }
+
+    // ===== TOP SECTION =====
+    const dmLeftPad = mmToPx(1.0);
+    const topDMX = dmLeftPad;
+    const topDMY = pad;
+    if (dmImg) drawDM(dmImg, topDMX, topDMY, dmSize);
+
+    // right aligned SKU, lowered slightly so visually centered vs DM
+    const skuColX = W - pad;
+    const rightBlockY = pad + mmToPx(2);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+
+    if (skuSmall) {
+      ctx.font = helvBody;
+      ctx.fillText(skuSmall, skuColX, rightBlockY);
+    }
+    if (skuBig) {
+      ctx.font = helvBig;
+      const bigY = rightBlockY + ptToPx(BODY_PT) * 1.4;
+      ctx.fillText(skuBig, skuColX, bigY);
+    } else if (sku) {
+      ctx.font = helvBig;
+      const bigY = rightBlockY + ptToPx(BODY_PT) * 1.4;
+      ctx.fillText(sku, skuColX, bigY);
+    }
+
+    // UID centered below DM+numbers
+    ctx.font = helvBody;
+    ctx.textAlign = 'center';
+    const topBlockBottom = topDMY + dmSize;
+    const uidY = topBlockBottom + mmToPx(2);
+    ctx.fillText(uid, W / 2, uidY);
+
+    // Barcode under UID, centered; width expanded to almost full label
+    const bcCanvas = getCode128CanvasForSKU(ean || sku || '000');
+    const bcFullW = W - pad * 2;
+    const bcTargetW = bcFullW;
+    const bcX = Math.round((W - bcTargetW) / 2);
+    const bcY = uidY + ptToPx(BODY_PT) * 1.6;
+    ctx.drawImage(bcCanvas, bcX, bcY, bcTargetW, bcCanvas.height);
+
+    // Human-readable digits under barcode
+    ctx.font = helvBody;
+    ctx.textAlign = 'center';
+    const hrY = bcY + bcCanvas.height + mmToPx(0.8);
+    const humanText = ean || sku || '';
+    if (humanText) ctx.fillText(humanText, W / 2, hrY);
+
+    const topSectionBottom = hrY + ptToPx(BODY_PT) * 1.2;
+
+    // Divider line
+    const dividerY = topSectionBottom + mmToPx(1.2);
+    ctx.beginPath();
+    ctx.moveTo(pad, dividerY);
+    ctx.lineTo(W - pad, dividerY);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // ===== BOTTOM SECTION =====
+    const bottomTextX = pad;
+    let yCursor = dividerY + mmToPx(2.0);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    // Product – greedy two-line wrap
+    const product = String(row.Product || '');
+    const productMaxWidth = W - pad * 2;
+    ctx.font = helvBoldHead;
+
+    function drawProductTwoLines(text, x, y){
+      if(!text) return y;
+      const words = text.split(/\s+/).filter(Boolean);
+      const lines = [];
+      let current = '';
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const candidate = current ? current + ' ' + word : word;
+        const width = ctx.measureText(candidate).width;
+
+        if (width <= productMaxWidth) {
+          current = candidate;
+        } else {
+          if (current) lines.push(current);
+          current = word;
+        }
+      }
+      if (current) lines.push(current);
+
+      const useLines = lines.slice(0, 2);
+      useLines.forEach(line => {
+        ctx.fillText(line, x, y);
+        y += ptToPx(HEAD_PT) * 1.2;
+      });
+      return y;
+    }
+
+    yCursor = drawProductTwoLines(product, bottomTextX, yCursor);
+
+    // Color
+    ctx.font = helvBody;
+    if (row.Color && String(row.Color).toLowerCase() !== 'size') {
+      ctx.fillText(String(row.Color), bottomTextX, yCursor);
+      yCursor += ptToPx(BODY_PT) * 1.2;
+    }
+
+    // Size
+    if (row.Size) {
+      ctx.fillText('Size: ' + String(row.Size), bottomTextX, yCursor);
+      yCursor += ptToPx(BODY_PT) * 1.2;
+    }
+
+    // Bottom DM at left
+    const bottomDMY = H - pad - dmSize;
+    const bottomDMX = dmLeftPad;
+    if (dmImg) drawDM(dmImg, bottomDMX, bottomDMY, dmSize);
+
+    // Bottom numbers at right, slightly down for visual centering
+    const bottomNumsX = W - pad;
+    const bottomNumsY = bottomDMY + mmToPx(2);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+
+    if (skuSmall) {
+      ctx.font = helvBody;
+      ctx.fillText(skuSmall, bottomNumsX, bottomNumsY);
+    }
+    if (skuBig) {
+      ctx.font = helvBig;
+      const bBigY = bottomNumsY + ptToPx(BODY_PT) * 1.4;
+      ctx.fillText(skuBig, bottomNumsX, bBigY);
+    } else if (sku) {
+      ctx.font = helvBig;
+      const bBigY = bottomNumsY + ptToPx(BODY_PT) * 1.4;
+      ctx.fillText(sku, bottomNumsX, bBigY);
+    }
+
+    return canvas;
+  }
+
+  async function canvasToPngBlob(cv){
+    return new Promise((res,rej)=> cv.toBlob(b=> b?res(b):rej(new Error("toBlob failed")), 'image/png', 1));
+  }
+
+  async function renderPreviewGrid(){
+    $previewGrid.innerHTML = '';
+    labelImages = [];
+    pngNames = expandNames(rows);
+
+    if(!plan.length){
+      $previewCount.textContent = "0";
+      return;
+    }
+
+    const useDM = $toggleDM.checked;
+    const fast = $toggleFast.checked;
+    const maxPreview = Math.min(9, plan.length);
+    $previewCount.textContent = String(maxPreview);
+
+    for(let i=0;i<plan.length;i++){
+      const {row, uid} = plan[i];
+      const cv = await renderLabelCanvas(row, useDM, uid);
+      const blob = await canvasToPngBlob(cv);
+      const url = URL.createObjectURL(blob);
+      labelImages.push({blob, url, row, uid});
+
+      if(i < maxPreview){
+        const img = document.createElement('img');
+        img.src = url;
+        img.className = 'w-full border border-slate-300 rounded-lg bg-white';
+        img.alt = 'Label preview';
+        const wrap = document.createElement('div');
+        wrap.appendChild(img);
+        const cap = document.createElement('div');
+        cap.className = 'mt-1 text-[11px] text-slate-200';
+        cap.textContent = (row.PO_Number||'PO') + " · " + (row.SKU_Code||'SKU') + " · UID " + uid;
+        wrap.appendChild(cap);
+        $previewGrid.appendChild(wrap);
+      }
+
+      if(fast && i%20===0){
+        setStatus(`Rendered ${i+1}/${plan.length} labels…`);
+        await new Promise(r=>setTimeout(r,0));
+      }
+    }
+
+    setStatus(`Rendered ${plan.length} labels.`);
+    updatePngLinks();
+    $btnPdfsByPO.classList.toggle('hidden', !labelImages.length);
+  }
+
+  function updatePngLinks(){
+    $pngLinks.innerHTML='';
+    labelImages.forEach((item, idx)=>{
+      const row = item.row;
+      const name = pngNames[idx] || `label_${idx+1}.png`;
+      const rowEl = document.createElement('div');
+      rowEl.className = 'flex items-center justify-between gap-2';
+      const left = document.createElement('div');
+      left.className = 'truncate';
+      left.textContent = `${row.PO_Number || 'PO'} · ${row.SKU_Code || 'SKU'} · UID ${item.uid}`;
+      const a = document.createElement('a');
+      a.href = item.url;
+      a.download = name;
+      a.className = 'text-[11px] text-[#990033] hover:underline whitespace-nowrap';
+      a.textContent = 'PNG';
+      rowEl.appendChild(left);
+      rowEl.appendChild(a);
+      $pngLinks.appendChild(rowEl);
+    });
+  }
+
+  $btnTogglePngLinks.addEventListener('click', ()=>{
+    const show=$pngLinks.classList.contains('hidden');
+    $pngLinks.classList.toggle('hidden', !show);
+    $btnTogglePngLinks.textContent = show ? "Hide PNG links" : "PNG links";
+    if (show) updatePngLinks();
+  });
+
+  async function buildZip(){
+    if(!labelImages.length){ alert('No labels rendered yet.'); return; }
+    if(typeof JSZip === 'undefined'){
+      alert('JSZip failed to load.');
+      return;
+    }
+    setStatus("Building PNG ZIP…");
+    const zip = new JSZip();
+    for(let i=0;i<labelImages.length;i++){
+      const {blob} = labelImages[i];
+      const name = pngNames[i] || `label_${i+1}.png`;
+      zip.file(name, blob);
+      if(i%50===0) setStatus(`Zipping ${i+1}/${labelImages.length}…`);
+    }
+    const blob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href = url;
+    a.download = 'labels_png.zip';
+    a.click();
+    setStatus("PNG ZIP ready.");
+  }
+
+  $btnZip.addEventListener('click', ()=>{ buildZip().catch(err=>{ console.error(err); setStatus("ZIP error."); }); });
+
+  async function buildSinglePdf(){
+    if(!labelImages.length){ alert('No labels rendered yet.'); return; }
+    if(typeof PDFLib === 'undefined'){
+      alert('pdf-lib failed to load.');
+      return;
+    }
+    const { PDFDocument, StandardFonts } = PDFLib;
+    setStatus("Building single PDF…");
+    const pdfDoc = await PDFDocument.create();
+    const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    for(const item of labelImages){
+      const pngBytes = await item.blob.arrayBuffer();
+      const png = await pdfDoc.embedPng(pngBytes);
+      const page = pdfDoc.addPage([mmToPt(LABEL_W_MM), mmToPt(LABEL_H_MM)]);
+      page.drawImage(png, { x:0, y:0, width:mmToPt(LABEL_W_MM), height:mmToPt(LABEL_H_MM) });
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], {type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    $linkPdf.href = url;
+    $linkPdf.download = 'labels_all.pdf';
+    $linkPdf.classList.remove('hidden');
+    setStatus("Single PDF ready.");
+  }
+
+  $linkPdf.addEventListener('click', (e)=>{
+    if(!$linkPdf.href){ e.preventDefault(); buildSinglePdf().catch(err=>{ console.error(err); setStatus("PDF error."); }); }
+  });
+
+  // Build Excel at UID level (one row per label)
+  function buildExcelForRun(){
+    if (!plan.length) {
+      alert('No labels / UIDs to export to Excel.');
+      return;
+    }
+
+    const labelSheetData = plan.map((p, idx) => ({
+      PO_Number: p.row.PO_Number,
+      SKU_Code: p.row.SKU_Code,
+      EAN_Code: p.row.EAN_Code,
+      Product: p.row.Product,
+      Color: p.row.Color,
+      Size: p.row.Size,
+      Style: p.row.Style,
+      UID: p.uid,
+      Label_Index: idx + 1
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(labelSheetData);
+    XLSX.utils.book_append_sheet(wb, ws, "UID_Labels");
+
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'uid_labels.xlsx';
+    a.click();
+  }
+
+  async function buildPdfsByPO(){
+    if(!labelImages.length){ alert('No labels rendered yet.'); return; }
+    if(typeof PDFLib === 'undefined'){
+      alert('pdf-lib failed to load.');
+      return;
+    }
+    const { PDFDocument, StandardFonts } = PDFLib;
+    if(typeof JSZip === 'undefined'){
+      alert('JSZip failed to load.');
+      return;
+    }
+
+    setStatus("Building PDFs by PO…");
+    const byPO = new Map();
+    labelImages.forEach((item, idx)=>{
+      const po = item.row.PO_Number || 'PO';
+      if(!byPO.has(po)) byPO.set(po, []);
+      byPO.get(po).push({ item, idx });
+    });
+
+    const zip = new JSZip();
+    let poIndex = 0;
+
+    for(const [po, arr] of byPO.entries()){
+      poIndex++;
+      const pdfDoc = await PDFDocument.create();
+      const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      for(const {item} of arr){
+        const pngBytes = await item.blob.arrayBuffer();
+        const png = await pdfDoc.embedPng(pngBytes);
+        const page = pdfDoc.addPage([mmToPt(LABEL_W_MM), mmToPt(LABEL_H_MM)]);
+        page.drawImage(png, { x:0, y:0, width:mmToPt(LABEL_W_MM), height:mmToPt(LABEL_H_MM) });
+      }
+      const pdfBytes = await pdfDoc.save();
+      const pdfName = sanitizeForName(po || ('PO_'+poIndex)) + '.pdf';
+      zip.file(pdfName, pdfBytes);
+      setStatus(`PDF for ${po} (${poIndex}/${byPO.size})…`);
+    }
+
+    const zipBlob = await zip.generateAsync({type:'blob'});
+    const url = URL.createObjectURL(zipBlob);
+    const a=document.createElement('a');
+    a.href = url;
+    a.download = 'labels_by_po.zip';
+    a.click();
+    setStatus("PO PDFs ZIP ready.");
+
+    // Also drop the UID-level Excel
+    buildExcelForRun();
+  }
+
+  $btnPdfsByPO.addEventListener('click', ()=>{ buildPdfsByPO().catch(err=>{ console.error(err); setStatus("PDF by PO error."); }); });
+
+})();
+</script>
+</body>
+</html>
