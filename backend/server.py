@@ -13,18 +13,10 @@ from render_labels import run_pdf_by_po  # import from same repo
 
 app = FastAPI()
 
-# Allowed front-end origins
-origins = [
-    "https://portrait3676uid.netlify.app",  # your Netlify site
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:4173",
-    "http://localhost:8080",
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # or restrict to ["https://portrait3676uid.netlify.app"]
+    allow_origins=["*"],  
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
