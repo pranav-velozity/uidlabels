@@ -698,92 +698,88 @@
   $linkPdf.addEventListener('click', (e)=>{
     if(!$linkPdf.href){ e.preventDefault(); buildSinglePdf().catch(err=>{ console.error(err); setStatus("PDF error."); }); }
   });
-
-  // Build Excel at UID level (one row per label)
-  function buildExcelForRun(){
-    if (!plan.length) {
-      alert('No labels / UIDs to export to Excel.');
-      return;
-    }
-
-    const labelSheetData = plan.map((p, idx) => ({
-      PO_Number: p.row.PO_Number,
-      SKU_Code: p.row.SKU_Code,
-      EAN_Code: p.row.EAN_Code,
-      Product: p.row.Product,
-      Color: p.row.Color,
-      Size: p.row.Size,
-      Style: p.row.Style,
-      UID: p.uid,
-      Label_Index: idx + 1
-    }));
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(labelSheetData);
-    XLSX.utils.book_append_sheet(wb, ws, "UID_Labels");
-
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    });
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'uid_labels.xlsx';
-    a.click();
+// Build the UID-level Excel for this run and return a Blob.
+// Returns null if there is nothing to export.
+function makeUidExcelBlobForRun(){
+  if (!plan.length) {
+    alert('No labels / UIDs to export to Excel.');
+    return null;
   }
 
-  async function buildPdfsByPO(){
-    if(!labelImages.length){ alert('No labels rendered yet.'); return; }
-    if(typeof PDFLib === 'undefined'){
-      alert('pdf-lib failed to load.');
-      return;
-    }
-    const { PDFDocument, StandardFonts } = PDFLib;
-    if(typeof JSZip === 'undefined'){
-      alert('JSZip failed to load.');
-      return;
-    }
+  const labelSheetData = plan.map((p, idx) => ({
+    PO_Number: p.row.PO_Number,
+    SKU_Code: p.row.SKU_Code,
+    EAN_Code: p.row.EAN_Code,
+    Product: p.row.Product,
+    Color: p.row.Color,
+    Size: p.row.Size,
+    Style: p.row.Style,
+    UID: p.uid,
+    Label_Index: idx + 1
+  }));
 
-    setStatus("Building PDFs by PO…");
-    const byPO = new Map();
-    labelImages.forEach((item, idx)=>{
-      const po = item.row.PO_Number || 'PO';
-      if(!byPO.has(po)) byPO.set(po, []);
-      byPO.get(po).push({ item, idx });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(labelSheetData);
+  XLSX.utils.book_append_sheet(wb, ws, "UID_Labels");
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([wbout], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+
+  return blob;
+}
+
+// Keep a button that just downloads the Excel locally (if you use it elsewhere)
+function buildExcelForRun(){
+  const blob = makeUidExcelBlobForRun();
+  if (!blob) return;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'uid_labels.xlsx';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// New: call the Python batch renderer to build PDFs by PO
+async function buildPdfsByPO(){
+  const excelBlob = makeUidExcelBlobForRun();
+  if (!excelBlob) return;
+
+  try {
+    setStatus('Uploading UID Excel to batch renderer…');
+
+    const formData = new FormData();
+    formData.append('file', excelBlob, 'uid_labels.xlsx');
+
+    const res = await fetch('https://uidlabels.onrender.com/render/pdf-by-po', {
+      method: 'POST',
+      body: formData
     });
 
-    const zip = new JSZip();
-    let poIndex = 0;
-
-    for(const [po, arr] of byPO.entries()){
-      poIndex++;
-      const pdfDoc = await PDFDocument.create();
-      const helv = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      for(const {item} of arr){
-        const pngBytes = await item.blob.arrayBuffer();
-        const png = await pdfDoc.embedPng(pngBytes);
-        const page = pdfDoc.addPage([mmToPt(LABEL_W_MM), mmToPt(LABEL_H_MM)]);
-        page.drawImage(png, { x:0, y:0, width:mmToPt(LABEL_W_MM), height:mmToPt(LABEL_H_MM) });
-      }
-      const pdfBytes = await pdfDoc.save();
-      const pdfName = sanitizeForName(po || ('PO_'+poIndex)) + '.pdf';
-      zip.file(pdfName, pdfBytes);
-      setStatus(`PDF for ${po} (${poIndex}/${byPO.size})…`);
+    if (!res.ok) {
+      throw new Error('Server error ' + res.status);
     }
 
-    const zipBlob = await zip.generateAsync({type:'blob'});
+    setStatus('Downloading PO PDFs ZIP…');
+
+    const zipBlob = await res.blob();
     const url = URL.createObjectURL(zipBlob);
-    const a=document.createElement('a');
+    const a = document.createElement('a');
     a.href = url;
     a.download = 'labels_by_po.zip';
     a.click();
-    setStatus("PO PDFs ZIP ready.");
+    URL.revokeObjectURL(url);
 
-    // Also drop the UID-level Excel
-    buildExcelForRun();
+    setStatus('PO PDFs ZIP ready (batch renderer).');
+  } catch (err) {
+    console.error(err);
+    alert('Batch render failed. Please try again or contact support.');
+    setStatus('Batch render error.');
   }
+}
 
   $btnPdfsByPO.addEventListener('click', ()=>{ buildPdfsByPO().catch(err=>{ console.error(err); setStatus("PDF by PO error."); }); });
 
