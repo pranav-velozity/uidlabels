@@ -18,7 +18,7 @@ from reportlab.graphics.barcode import code128
 LABEL_W_MM = 36
 LABEL_H_MM = 76
 
-# Fonts
+# Fonts (all bold to match browser)
 HEAD_FONT = "Helvetica-Bold"
 BODY_FONT = "Helvetica-Bold"
 BIG_FONT = "Helvetica-Bold"
@@ -27,19 +27,20 @@ HEAD_PT = 8.0
 BODY_PT = 7.0
 BIG_NUM_PT = 16.0
 
-# Margins & sizes (tuned close to golden label)
-TOP_MARGIN_MM = 4.0           # top white margin
-SIDE_MARGIN_MM = 3.0          # left/right white margin
-DM_SIZE_MM = 14.0             # DataMatrix box size
-DM_QUIET_MM = 1.0             # quiet zone inside DM box
+# Margins & sizes
+TOP_MARGIN_MM = 4.0            # top white margin
+SIDE_MARGIN_MM = 3.0           # left/right white margin for text/DM
+BC_SIDE_MARGIN_MM = 1.5        # slightly smaller margin for barcode width
+DM_SIZE_MM = 14.0              # DataMatrix box size
+DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
-UID_GAP_MM = 6.0              # gap from bottom of top DM to UID baseline
-BARCODE_TOP_GAP_MM = 14.0     # gap from UID baseline to bottom of barcode
-BARCODE_HEIGHT_MM = 12.0      # barcode bar height (reduced)
-HR_GAP_MM = 2.0               # gap from barcode bars to HR digits
-DIVIDER_GAP_MM = 3.0          # gap from HR digits to divider line
-TEXT_TOP_GAP_MM = 2.0         # gap from divider to first product line
-BOTTOM_DM_BOTTOM_PAD_MM = 6.0 # bottom white margin under bottom DM
+UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
+BARCODE_TOP_GAP_MM = 14.0      # gap from UID baseline to bottom of barcode
+BARCODE_HEIGHT_MM = 9.0        # barcode bar height (further reduced)
+HR_GAP_MM = 2.0                # gap from barcode bars to HR digits
+DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
+TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line (more space)
+BOTTOM_DM_BOTTOM_PAD_MM = 6.0  # bottom white margin under bottom DM
 
 PAGE_W = LABEL_W_MM * mm
 PAGE_H = LABEL_H_MM * mm
@@ -61,8 +62,7 @@ def make_dm_image(payload: str) -> ImageReader | None:
         return None
     qr = segno.make(payload, micro=False, encoding="utf-8")
     buf = io.BytesIO()
-    # border=0, we manage quiet zone ourselves
-    qr.save(buf, kind="png", border=0, scale=1)
+    qr.save(buf, kind="png", border=0, scale=1)  # border=0, we handle quiet zone
     buf.seek(0)
     return ImageReader(buf)
 
@@ -170,16 +170,16 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     sku_x = PAGE_W - SIDE_MARGIN_MM * mm
 
     c.setFont(BODY_FONT, BODY_PT)
-    small_y = PAGE_H - TOP_MARGIN_MM * mm
+    small_y_top = PAGE_H - TOP_MARGIN_MM * mm
     if sku_small:
-        c.drawRightString(sku_x, small_y, sku_small)
+        c.drawRightString(sku_x, small_y_top, sku_small)
 
     c.setFont(BIG_FONT, BIG_NUM_PT)
-    big_y = small_y - BIG_NUM_PT * 1.3
+    big_y_top = small_y_top - BIG_NUM_PT * 1.3
     if sku_big:
-        c.drawRightString(sku_x, big_y, sku_big)
+        c.drawRightString(sku_x, big_y_top, sku_big)
     elif sku:
-        c.drawRightString(sku_x, big_y, sku)
+        c.drawRightString(sku_x, big_y_top, sku)
 
     # ---- UID (centered, bold, below DM block) ----
     uid_y = top_dm_y - UID_GAP_MM * mm
@@ -187,8 +187,8 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-    # ---- BARCODE (shorter height) ----
-    bc_full_w = PAGE_W - 2 * SIDE_MARGIN_MM * mm
+    # ---- BARCODE (shorter, wider) ----
+    bc_full_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
     bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
 
@@ -205,7 +205,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     c.line(SIDE_MARGIN_MM * mm, divider_y,
            PAGE_W - SIDE_MARGIN_MM * mm, divider_y)
 
-    # ---- PRODUCT / COLOR / SIZE (bold) ----
+    # ---- PRODUCT / COLOR / SIZE (bold, more gap from line) ----
     text_y = divider_y - TEXT_TOP_GAP_MM * mm
     max_text_width = PAGE_W - 2 * SIDE_MARGIN_MM * mm
 
@@ -223,23 +223,24 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawString(SIDE_MARGIN_MM * mm, text_y, f"Size: {size}")
         text_y -= BODY_PT * 1.4
 
-    # ---- BOTTOM DM + SKU (bold) ----
+    # ---- BOTTOM DM + SKU (bold, consistent with top) ----
     bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
     bottom_dm_x = SIDE_MARGIN_MM * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
-    # bottom-right SKU
+    # bottom-right SKU – same small/big spacing as top
     c.setFont(BODY_FONT, BODY_PT)
-    bottom_small_y = bottom_dm_y + dm_size_pt - BODY_PT * 1.2
+    # Base line for the small bottom number; a bit above top of bottom DM
+    base_bottom_small_y = bottom_dm_y + dm_size_pt + BODY_PT
     if sku_small:
-        c.drawRightString(sku_x, bottom_small_y, sku_small)
+        c.drawRightString(sku_x, base_bottom_small_y, sku_small)
 
     c.setFont(BIG_FONT, BIG_NUM_PT)
-    bottom_big_y = bottom_dm_y + dm_size_pt / 2.0
+    base_bottom_big_y = base_bottom_small_y - BIG_NUM_PT * 1.3
     if sku_big:
-        c.drawRightString(sku_x, bottom_big_y, sku_big)
+        c.drawRightString(sku_x, base_bottom_big_y, sku_big)
     elif sku:
-        c.drawRightString(sku_x, bottom_big_y, sku)
+        c.drawRightString(sku_x, base_bottom_big_y, sku)
 
 
 # ========= BATCH PIPELINE =========
