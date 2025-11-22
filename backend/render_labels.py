@@ -12,28 +12,30 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import code128
 
-# ========= LAYOUT CONSTANTS =========
+
+# ========= LAYOUT CONSTANTS (mirroring browser layout, tuned to golden label) =========
 
 LABEL_W_MM = 36
 LABEL_H_MM = 76
 
-# Fonts (roughly matching browser)
+# Fonts
 HEAD_PT = 8.0
 BODY_PT = 7.0
 BIG_NUM_PT = 16.0
 
 # Margins & sizes
-TOP_MARGIN_MM = 4.0
-SIDE_MARGIN_MM = 3.0
-DM_SIZE_MM = 14.0           # square DataMatrix box
-DM_QUIET_MM = 1.0           # quiet zone inside DM box
+TOP_MARGIN_MM = 4.0           # top white margin
+SIDE_MARGIN_MM = 3.0          # left/right white margin
+DM_SIZE_MM = 14.0             # DataMatrix box size
+DM_QUIET_MM = 1.0             # quiet zone inside DM box
 
-UID_GAP_MM = 5.0            # gap below top DM to UID
-BARCODE_TOP_GAP_MM = 8.0    # gap below UID to barcode
-HR_GAP_MM = 2.0             # gap below barcode bars to human-readable digits
-DIVIDER_GAP_MM = 3.0        # gap below HR digits to divider
-TEXT_TOP_GAP_MM = 2.0       # gap below divider to product text
-BOTTOM_DM_BOTTOM_PAD_MM = 6.0  # bottom margin under bottom DM
+UID_GAP_MM = 6.0              # gap from bottom of top DM to UID baseline
+BARCODE_TOP_GAP_MM = 14.0     # gap from UID baseline to bottom of barcode
+BARCODE_HEIGHT_MM = 18.0      # barcode bar height
+HR_GAP_MM = 2.0               # gap from barcode bars to HR digits
+DIVIDER_GAP_MM = 3.0          # gap from HR digits to divider line
+TEXT_TOP_GAP_MM = 2.0         # gap from divider to first product line
+BOTTOM_DM_BOTTOM_PAD_MM = 6.0 # bottom white margin under bottom DM
 
 PAGE_W = LABEL_W_MM * mm
 PAGE_H = LABEL_H_MM * mm
@@ -55,7 +57,8 @@ def make_dm_image(payload: str) -> ImageReader | None:
         return None
     qr = segno.make(payload, micro=False, encoding="utf-8")
     buf = io.BytesIO()
-    qr.save(buf, kind="png", border=0, scale=1)  # border=0, we handle quiet zone
+    # border=0, we manage quiet zone ourselves
+    qr.save(buf, kind="png", border=0, scale=1)
     buf.seek(0)
     return ImageReader(buf)
 
@@ -63,29 +66,31 @@ def make_dm_image(payload: str) -> ImageReader | None:
 def draw_datamatrix(c: canvas.Canvas, img: ImageReader | None,
                     x_pt: float, y_pt: float,
                     box_size_pt: float):
-    """Draw DM image in a square box with quiet zone margin."""
+    """Draw DM image in a square box with quiet zone margin (like JS)."""
     if img is None:
         return
     inner = box_size_pt - DM_QUIET_MM * mm * 2
     iw, ih = img.getSize()
+    # scale to fit inner box
     scale = min(inner / iw, inner / ih, 1.0)
     iw_scaled = iw * scale
     ih_scaled = ih * scale
     dx = x_pt + DM_QUIET_MM * mm + (inner - iw_scaled) / 2
     dy = y_pt + DM_QUIET_MM * mm + (inner - ih_scaled) / 2
-    c.drawImage(img, dx, dy, width=iw_scaled, height=ih_scaled, mask="auto")
+    c.drawImage(img, dx, dy, width=iw_scaled, height=ih_scaled, mask='auto')
 
 
 def draw_barcode(c: canvas.Canvas, payload: str,
                  x_center_pt: float, y_pt: float,
                  target_width_pt: float,
-                 bar_height_mm: float = 18.0):
-    """Draw Code128 barcode centered at x_center, scaled to target width."""
+                 bar_height_mm: float = BARCODE_HEIGHT_MM):
+    """Draw Code128 barcode centered at x_center, with target width."""
     if not payload:
         payload = "000"
 
     bc = code128.Code128(payload, barHeight=bar_height_mm * mm, humanReadable=False)
     bc_width = bc.width
+
     if bc_width == 0:
         return
 
@@ -99,8 +104,9 @@ def draw_barcode(c: canvas.Canvas, payload: str,
 
 
 def wrap_text(c: canvas.Canvas, text: str, max_width_pt: float,
-              font_name: str = "Helvetica", font_size: float = BODY_PT, max_lines: int = 2):
-    """Very simple word-wrap into <= max_lines."""
+              font_name: str = "Helvetica", font_size: float = BODY_PT,
+              max_lines: int = 2):
+    """Simple word-wrap into <= max_lines."""
     words = (text or "").split()
     if not words:
         return []
@@ -151,23 +157,21 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
 
     dm_img = make_dm_image(dm_payload)
 
-    # ---------- TOP DM ----------
+    # ---- TOP DM ----
     dm_size_pt = DM_SIZE_MM * mm
     top_dm_x = SIDE_MARGIN_MM * mm
     top_dm_y = PAGE_H - TOP_MARGIN_MM * mm - dm_size_pt
     draw_datamatrix(c, dm_img, top_dm_x, top_dm_y, dm_size_pt)
 
-    # ---------- TOP SKU (small + big, right-aligned) ----------
+    # ---- TOP SKU (small above big, right-aligned) ----
     sku_small, sku_big = split_sku(sku)
     sku_x = PAGE_W - SIDE_MARGIN_MM * mm
 
-    # small part, near top
     c.setFont("Helvetica", BODY_PT)
     small_y = PAGE_H - TOP_MARGIN_MM * mm
     if sku_small:
         c.drawRightString(sku_x, small_y, sku_small)
 
-    # big part, just below
     c.setFont("Helvetica", BIG_NUM_PT)
     big_y = small_y - BIG_NUM_PT * 1.3
     if sku_big:
@@ -175,13 +179,13 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     elif sku:
         c.drawRightString(sku_x, big_y, sku)
 
-    # ---------- UID (centered, below DM block) ----------
+    # ---- UID (centered, below DM block) ----
     uid_y = top_dm_y - UID_GAP_MM * mm
     c.setFont("Helvetica", BODY_PT)
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-    # ---------- BARCODE ----------
+    # ---- BARCODE ----
     bc_full_w = PAGE_W - 2 * SIDE_MARGIN_MM * mm
     bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
@@ -193,38 +197,36 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.setFont("Helvetica", BODY_PT)
         c.drawCentredString(PAGE_W / 2.0, hr_y, human_text)
 
-    # ---------- DIVIDER ----------
+    # ---- DIVIDER ----
     divider_y = hr_y - DIVIDER_GAP_MM * mm
     c.setLineWidth(0.4)
     c.line(SIDE_MARGIN_MM * mm, divider_y,
            PAGE_W - SIDE_MARGIN_MM * mm, divider_y)
 
-    # ---------- PRODUCT / COLOR / SIZE ----------
+    # ---- PRODUCT / COLOR / SIZE ----
     text_y = divider_y - TEXT_TOP_GAP_MM * mm
     max_text_width = PAGE_W - 2 * SIDE_MARGIN_MM * mm
 
-    # Product (wrap to 2 lines)
     c.setFont("Helvetica", BODY_PT)
-    for line in wrap_text(c, product, max_text_width, "Helvetica", BODY_PT, max_lines=2):
+    for line in wrap_text(c, product, max_text_width,
+                          font_name="Helvetica", font_size=BODY_PT, max_lines=2):
         c.drawString(SIDE_MARGIN_MM * mm, text_y, line)
         text_y -= BODY_PT * 1.4
 
-    # Color
     if color:
         c.drawString(SIDE_MARGIN_MM * mm, text_y, color)
         text_y -= BODY_PT * 1.4
 
-    # Size
     if size:
         c.drawString(SIDE_MARGIN_MM * mm, text_y, f"Size: {size}")
         text_y -= BODY_PT * 1.4
 
-    # ---------- BOTTOM DM + SKU ----------
+    # ---- BOTTOM DM + SKU ----
     bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
     bottom_dm_x = SIDE_MARGIN_MM * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
-    # bottom-right SKU (same style as top)
+    # bottom-right SKU (mirroring top-right)
     c.setFont("Helvetica", BODY_PT)
     bottom_small_y = bottom_dm_y + dm_size_pt - BODY_PT * 1.2
     if sku_small:
@@ -247,6 +249,7 @@ def load_uid_excel(path: Path) -> pd.DataFrame:
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns in Excel: {missing}")
+    # Normalize to strings and strip
     for col in required:
         df[col] = df[col].fillna("").astype(str).str.strip()
     return df
