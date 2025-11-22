@@ -30,14 +30,14 @@ BIG_NUM_PT = 16.0
 # Margins & sizes
 TOP_MARGIN_MM = 4.0            # top white margin
 SIDE_MARGIN_MM = 3.0           # left/right white margin for text/DM
-BC_SIDE_MARGIN_MM = 1.5        # slightly smaller margin for barcode width
+BC_SIDE_MARGIN_MM = 1.0        # reduced margin => wider barcode
 DM_SIZE_MM = 14.0              # DataMatrix box size
 DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
 UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
-BARCODE_TOP_GAP_MM = 10.0      # (smaller) gap from UID to barcode -> moves barcode UP
+BARCODE_TOP_GAP_MM = 10.0      # gap from UID to barcode (moves barcode up)
 BARCODE_HEIGHT_MM = 9.0        # barcode bar height
-HR_GAP_MM = 3.0                # (bigger) gap from bars to 13-digit text
+HR_GAP_MM = 4.0                # more gap from bars to 13-digit text
 DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
 TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
 BOTTOM_DM_BOTTOM_PAD_MM = 6.0  # bottom white margin under bottom DM
@@ -165,7 +165,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     top_dm_y = PAGE_H - TOP_MARGIN_MM * mm - dm_size_pt
     draw_datamatrix(c, dm_img, top_dm_x, top_dm_y, dm_size_pt)
 
-    # ---- TOP SKU (small above big, closer, centred on DM) ----
+    # ---- TOP SKU (small above big, spaced, centred on DM) ----
     sku_small, sku_big = split_sku(sku)
     sku_x = PAGE_W - SIDE_MARGIN_MM * mm
 
@@ -173,15 +173,15 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
 
     # Big number baseline a bit below DM centre
     c.setFont(BIG_FONT, BIG_NUM_PT)
-    big_y_top = center_y_dm_top - BIG_NUM_PT * 0.35
+    big_y_top = center_y_dm_top - BIG_NUM_PT * 0.4
     if sku_big:
         c.drawRightString(sku_x, big_y_top, sku_big)
     elif sku:
         c.drawRightString(sku_x, big_y_top, sku)
 
-    # Small number baseline just above big number (close together)
+    # Small number baseline clearly above big (no overlap)
     c.setFont(BODY_FONT, BODY_PT)
-    small_y_top = big_y_top + BODY_PT * 1.1
+    small_y_top = big_y_top + 4.0 * mm  # ~11pt spacing
     if sku_small:
         c.drawRightString(sku_x, small_y_top, sku_small)
 
@@ -191,7 +191,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-    # ---- BARCODE (moved up, slightly wider) ----
+    # ---- BARCODE (moved up, wider) ----
     bc_full_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
     bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
@@ -232,21 +232,19 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     bottom_dm_x = SIDE_MARGIN_MM * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
-    # ---- BOTTOM SKU (mirrors top spacing/centering) ----
+    # ---- BOTTOM SKU (same spacing/centering as top) ----
     center_y_dm_bottom = bottom_dm_y + dm_size_pt / 2.0
-    sku_x_bottom = sku_x  # same horizontal position
+    sku_x_bottom = sku_x
 
-    # Big number baseline a bit below DM centre
     c.setFont(BIG_FONT, BIG_NUM_PT)
-    big_y_bottom = center_y_dm_bottom - BIG_NUM_PT * 0.35
+    big_y_bottom = center_y_dm_bottom - BIG_NUM_PT * 0.4
     if sku_big:
         c.drawRightString(sku_x_bottom, big_y_bottom, sku_big)
     elif sku:
         c.drawRightString(sku_x_bottom, big_y_bottom, sku)
 
-    # Small number just above big number
     c.setFont(BODY_FONT, BODY_PT)
-    small_y_bottom = big_y_bottom + BODY_PT * 1.1
+    small_y_bottom = big_y_bottom + 4.0 * mm
     if sku_small:
         c.drawRightString(sku_x_bottom, small_y_bottom, sku_small)
 
