@@ -35,11 +35,11 @@ DM_SIZE_MM = 14.0              # DataMatrix box size
 DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
 UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
-BARCODE_TOP_GAP_MM = 14.0      # gap from UID baseline to bottom of barcode
-BARCODE_HEIGHT_MM = 9.0        # barcode bar height (further reduced)
-HR_GAP_MM = 2.0                # gap from barcode bars to HR digits
+BARCODE_TOP_GAP_MM = 10.0      # (smaller) gap from UID to barcode -> moves barcode UP
+BARCODE_HEIGHT_MM = 9.0        # barcode bar height
+HR_GAP_MM = 3.0                # (bigger) gap from bars to 13-digit text
 DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
-TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line (more space)
+TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
 BOTTOM_DM_BOTTOM_PAD_MM = 6.0  # bottom white margin under bottom DM
 
 PAGE_W = LABEL_W_MM * mm
@@ -165,34 +165,38 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     top_dm_y = PAGE_H - TOP_MARGIN_MM * mm - dm_size_pt
     draw_datamatrix(c, dm_img, top_dm_x, top_dm_y, dm_size_pt)
 
-    # ---- TOP SKU (small above big, right-aligned, bold) ----
+    # ---- TOP SKU (small above big, closer, centred on DM) ----
     sku_small, sku_big = split_sku(sku)
     sku_x = PAGE_W - SIDE_MARGIN_MM * mm
 
-    c.setFont(BODY_FONT, BODY_PT)
-    small_y_top = PAGE_H - TOP_MARGIN_MM * mm
-    if sku_small:
-        c.drawRightString(sku_x, small_y_top, sku_small)
+    center_y_dm_top = top_dm_y + dm_size_pt / 2.0
 
+    # Big number baseline a bit below DM centre
     c.setFont(BIG_FONT, BIG_NUM_PT)
-    big_y_top = small_y_top - BIG_NUM_PT * 1.3
+    big_y_top = center_y_dm_top - BIG_NUM_PT * 0.35
     if sku_big:
         c.drawRightString(sku_x, big_y_top, sku_big)
     elif sku:
         c.drawRightString(sku_x, big_y_top, sku)
 
-    # ---- UID (centered, bold, below DM block) ----
+    # Small number baseline just above big number (close together)
+    c.setFont(BODY_FONT, BODY_PT)
+    small_y_top = big_y_top + BODY_PT * 1.1
+    if sku_small:
+        c.drawRightString(sku_x, small_y_top, sku_small)
+
+    # ---- UID (centered, below DM block) ----
     uid_y = top_dm_y - UID_GAP_MM * mm
     c.setFont(BODY_FONT, BODY_PT)
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-    # ---- BARCODE (shorter, wider) ----
+    # ---- BARCODE (moved up, slightly wider) ----
     bc_full_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
     bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
 
-    # Human-readable digits (bold)
+    # Human-readable digits (more gap below bars)
     hr_y = bc_y - HR_GAP_MM * mm
     human_text = ean or sku or ""
     if human_text:
@@ -205,7 +209,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     c.line(SIDE_MARGIN_MM * mm, divider_y,
            PAGE_W - SIDE_MARGIN_MM * mm, divider_y)
 
-    # ---- PRODUCT / COLOR / SIZE (bold, more gap from line) ----
+    # ---- PRODUCT / COLOR / SIZE ----
     text_y = divider_y - TEXT_TOP_GAP_MM * mm
     max_text_width = PAGE_W - 2 * SIDE_MARGIN_MM * mm
 
@@ -223,24 +227,28 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawString(SIDE_MARGIN_MM * mm, text_y, f"Size: {size}")
         text_y -= BODY_PT * 1.4
 
-    # ---- BOTTOM DM + SKU (bold, consistent with top) ----
+    # ---- BOTTOM DM ----
     bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
     bottom_dm_x = SIDE_MARGIN_MM * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
-    # bottom-right SKU – same small/big spacing as top
-    c.setFont(BODY_FONT, BODY_PT)
-    # Base line for the small bottom number; a bit above top of bottom DM
-    base_bottom_small_y = bottom_dm_y + dm_size_pt + BODY_PT
-    if sku_small:
-        c.drawRightString(sku_x, base_bottom_small_y, sku_small)
+    # ---- BOTTOM SKU (mirrors top spacing/centering) ----
+    center_y_dm_bottom = bottom_dm_y + dm_size_pt / 2.0
+    sku_x_bottom = sku_x  # same horizontal position
 
+    # Big number baseline a bit below DM centre
     c.setFont(BIG_FONT, BIG_NUM_PT)
-    base_bottom_big_y = base_bottom_small_y - BIG_NUM_PT * 1.3
+    big_y_bottom = center_y_dm_bottom - BIG_NUM_PT * 0.35
     if sku_big:
-        c.drawRightString(sku_x, base_bottom_big_y, sku_big)
+        c.drawRightString(sku_x_bottom, big_y_bottom, sku_big)
     elif sku:
-        c.drawRightString(sku_x, base_bottom_big_y, sku)
+        c.drawRightString(sku_x_bottom, big_y_bottom, sku)
+
+    # Small number just above big number
+    c.setFont(BODY_FONT, BODY_PT)
+    small_y_bottom = big_y_bottom + BODY_PT * 1.1
+    if sku_small:
+        c.drawRightString(sku_x_bottom, small_y_bottom, sku_small)
 
 
 # ========= BATCH PIPELINE =========
@@ -252,7 +260,6 @@ def load_uid_excel(path: Path) -> pd.DataFrame:
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns in Excel: {missing}")
-    # Normalize to strings and strip
     for col in required:
         df[col] = df[col].fillna("").astype(str).str.strip()
     return df
