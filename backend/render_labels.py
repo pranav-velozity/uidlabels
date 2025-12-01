@@ -5,13 +5,12 @@ import multiprocessing as mp
 from pathlib import Path
 
 import pandas as pd
-import segno
+from segno import helpers
 from reportlab.lib.pagesizes import portrait
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import code128
-
 
 # ========= LAYOUT CONSTANTS =========
 
@@ -60,13 +59,11 @@ def make_dm_image(payload: str) -> ImageReader | None:
     """Generate a DataMatrix PNG in memory and wrap as ImageReader."""
     if not payload:
         return None
-  from segno import helpers
-qr = helpers.make_data_matrix(payload)
+    dm = helpers.make_data_matrix(payload)   # DataMatrix, not QR
     buf = io.BytesIO()
-    qr.save(buf, kind="png", border=0, scale=1)  # border=0, we handle quiet zone
+    dm.save(buf, kind="png", border=0, scale=1)  # border=0, we manage quiet zone
     buf.seek(0)
     return ImageReader(buf)
-
 
 def draw_datamatrix(c: canvas.Canvas, img: ImageReader | None,
                     x_pt: float, y_pt: float,
