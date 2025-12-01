@@ -5,3 +5,4 @@ openpyxl
 reportlab
 segno
 python-multipart
+pyStrich==0.10
