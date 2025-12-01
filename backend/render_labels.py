@@ -5,7 +5,7 @@ import multiprocessing as mp
 from pathlib import Path
 
 import pandas as pd
-from segno import helpers
+from pystrich.datamatrix import DataMatrixEncoder
 from reportlab.lib.pagesizes import portrait
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -56,14 +56,30 @@ def split_sku(sku: str):
 
 
 def make_dm_image(payload: str) -> ImageReader | None:
-    """Generate a DataMatrix PNG in memory and wrap as ImageReader."""
+    """
+    Generate a DataMatrix PNG in memory and wrap as ImageReader.
+
+    Uses pyStrich's DataMatrixEncoder so this is a true DataMatrix symbol,
+    not a QR code.
+    """
+    payload = (payload or "").strip()
     if not payload:
         return None
-    dm = helpers.make_data_matrix(payload)   # DataMatrix, not QR
-    buf = io.BytesIO()
-    dm.save(buf, kind="png", border=0, scale=1)  # border=0, we manage quiet zone
+
+    # DataMatrixEncoder returns PNG bytes via get_imagedata().
+    # cellsize controls how many pixels per module; 2 is usually a good
+    # balance between resolution and size. We scale again in draw_datamatrix.
+    try:
+        encoder = DataMatrixEncoder(payload)
+        png_bytes = encoder.get_imagedata(cellsize=2)
+    except Exception:
+        # If anything goes wrong, fail silently for this label
+        return None
+
+    buf = io.BytesIO(png_bytes)
     buf.seek(0)
     return ImageReader(buf)
+
 
 def draw_datamatrix(c: canvas.Canvas, img: ImageReader | None,
                     x_pt: float, y_pt: float,
