@@ -60,7 +60,8 @@ def make_dm_image(payload: str) -> ImageReader | None:
     """Generate a DataMatrix PNG in memory and wrap as ImageReader."""
     if not payload:
         return None
-    qr = segno.make(payload, micro=False, encoding="utf-8")
+  from segno import helpers
+qr = helpers.make_data_matrix(payload)
     buf = io.BytesIO()
     qr.save(buf, kind="png", border=0, scale=1)  # border=0, we handle quiet zone
     buf.seek(0)
