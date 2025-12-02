@@ -202,13 +202,14 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-    # ---- BARCODE (shorter, wider) ----
-    base_bc_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
-    max_bc_w = PAGE_W - 2 * 0.2 * mm  # keep a tiny 0.2 mm margin on each side
-    bc_full_w = min(base_bc_w * BARCODE_WIDTH_SCALE, max_bc_w)
+    # ---- BARCODE (shorter, much wider) ----
+    # Target width = 90% of label width to match browser preview more closely.
+    # (Centered horizontally.)
+    bc_full_w = PAGE_W * 0.90
 
     bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
+
 
     # Human-readable digits
     hr_y = bc_y - HR_GAP_MM * mm
