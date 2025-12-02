@@ -205,7 +205,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     # ---- BARCODE (shorter, much wider) ----
     # Target width = 90% of label width to match browser preview more closely.
     # (Centered horizontally.)
-    bc_full_w = PAGE_W * 0.90
+    bc_full_w = PAGE_W * 1.40
 
     bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
