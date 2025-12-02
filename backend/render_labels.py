@@ -29,14 +29,14 @@ BIG_NUM_PT = 16.0
 # Margins & sizes
 TOP_MARGIN_MM = 4.0            # top white margin
 SIDE_MARGIN_MM = 3.0           # left/right white margin for text/DM
-BC_SIDE_MARGIN_MM = 0.5        # even smaller margin => wider barcode
-DM_SIZE_MM = 18.0              # DataMatrix box size
+BC_SIDE_MARGIN_MM = 0.5        # base margin for barcode
+DM_SIZE_MM = 18.0              # DataMatrix box size (~30% bigger than 14mm)
 DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
 UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
 BARCODE_TOP_GAP_MM = 10.0      # gap from UID to barcode (moves barcode up)
-BARCODE_HEIGHT_MM = 7.0        # barcode bar height (3/4 of previous ~9)
-BARCODE_WIDTH_SCALE = 1.3      # widen barcode to ~130% of previous width
+BARCODE_HEIGHT_MM = 7.0        # barcode bar height
+BARCODE_WIDTH_SCALE = 1.3      # widen barcode to ~130% of base width
 HR_GAP_MM = 4.0                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
 TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
@@ -60,21 +60,17 @@ def make_dm_image(payload: str) -> ImageReader | None:
     """
     Generate a DataMatrix PNG in memory and wrap as ImageReader.
 
-    Uses pyStrich's DataMatrixEncoder so this is a true DataMatrix symbol,
-    not a QR code.
+    Uses pyStrich's DataMatrixEncoder so this is a true DataMatrix symbol.
     """
     payload = (payload or "").strip()
     if not payload:
         return None
 
-    # DataMatrixEncoder returns PNG bytes via get_imagedata().
-    # cellsize controls how many pixels per module; 2 is usually a good
-    # balance between resolution and size. We scale again in draw_datamatrix.
     try:
         encoder = DataMatrixEncoder(payload)
+        # cellsize=2 => good resolution; we scale again in draw_datamatrix
         png_bytes = encoder.get_imagedata(cellsize=2)
     except Exception:
-        # If anything goes wrong, fail silently for this label
         return None
 
     buf = io.BytesIO(png_bytes)
@@ -180,7 +176,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     top_dm_y = PAGE_H - TOP_MARGIN_MM * mm - dm_size_pt
     draw_datamatrix(c, dm_img, top_dm_x, top_dm_y, dm_size_pt)
 
-    # ---- TOP SKU (small above big, more spaced, centred on DM) ----
+    # ---- TOP SKU (small above big, centred on DM) ----
     sku_small, sku_big = split_sku(sku)
     sku_x = PAGE_W - SIDE_MARGIN_MM * mm
 
@@ -194,9 +190,9 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     elif sku:
         c.drawRightString(sku_x, big_y_top, sku)
 
-    # Small number baseline above big (more gap now)
+    # Small number baseline above big
     c.setFont(BODY_FONT, BODY_PT)
-    small_y_top = big_y_top + 5.0 * mm  # was 4mm; more separation
+    small_y_top = big_y_top + 5.0 * mm
     if sku_small:
         c.drawRightString(sku_x, small_y_top, sku_small)
 
@@ -206,16 +202,15 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-# ---- BARCODE (shorter, wider) ----
-base_bc_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
-max_bc_w = PAGE_W - 2 * 0.2 * mm  # keep a tiny 0.2 mm margin on each side
-bc_full_w = min(base_bc_w * BARCODE_WIDTH_SCALE, max_bc_w)
+    # ---- BARCODE (shorter, wider) ----
+    base_bc_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
+    max_bc_w = PAGE_W - 2 * 0.2 * mm  # keep a tiny 0.2 mm margin on each side
+    bc_full_w = min(base_bc_w * BARCODE_WIDTH_SCALE, max_bc_w)
 
-bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
-draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
+    bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
+    draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
 
-
-    # Human-readable digits (more gap below bars)
+    # Human-readable digits
     hr_y = bc_y - HR_GAP_MM * mm
     human_text = ean or sku or ""
     if human_text:
@@ -251,7 +246,7 @@ draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
     bottom_dm_x = SIDE_MARGIN_MM * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
-    # ---- BOTTOM SKU (mirror top spacing/centering) ----
+    # ---- BOTTOM SKU (mirror top) ----
     center_y_dm_bottom = bottom_dm_y + dm_size_pt / 2.0
     sku_x_bottom = sku_x
 
@@ -263,7 +258,7 @@ draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
         c.drawRightString(sku_x_bottom, big_y_bottom, sku)
 
     c.setFont(BODY_FONT, BODY_PT)
-    small_y_bottom = big_y_bottom + 5.0 * mm  # match top gap
+    small_y_bottom = big_y_bottom + 5.0 * mm
     if sku_small:
         c.drawRightString(sku_x_bottom, small_y_bottom, sku_small)
 
