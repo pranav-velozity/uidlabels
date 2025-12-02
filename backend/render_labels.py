@@ -30,12 +30,13 @@ BIG_NUM_PT = 16.0
 TOP_MARGIN_MM = 4.0            # top white margin
 SIDE_MARGIN_MM = 3.0           # left/right white margin for text/DM
 BC_SIDE_MARGIN_MM = 0.5        # even smaller margin => wider barcode
-DM_SIZE_MM = 14.0              # DataMatrix box size
+DM_SIZE_MM = 18.0              # DataMatrix box size
 DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
 UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
 BARCODE_TOP_GAP_MM = 10.0      # gap from UID to barcode (moves barcode up)
 BARCODE_HEIGHT_MM = 7.0        # barcode bar height (3/4 of previous ~9)
+BARCODE_WIDTH_SCALE = 1.3      # widen barcode to ~130% of previous width
 HR_GAP_MM = 4.0                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
 TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
@@ -205,10 +206,14 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-    # ---- BARCODE (shorter, wider) ----
-    bc_full_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
-    bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
-    draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
+# ---- BARCODE (shorter, wider) ----
+base_bc_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
+max_bc_w = PAGE_W - 2 * 0.2 * mm  # keep a tiny 0.2 mm margin on each side
+bc_full_w = min(base_bc_w * BARCODE_WIDTH_SCALE, max_bc_w)
+
+bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
+draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
+
 
     # Human-readable digits (more gap below bars)
     hr_y = bc_y - HR_GAP_MM * mm
