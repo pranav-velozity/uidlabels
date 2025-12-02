@@ -36,11 +36,11 @@ DM_QUIET_MM = 1.0              # quiet zone inside DM box
 UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
 BARCODE_TOP_GAP_MM = 10.0      # gap from UID to barcode (moves barcode up)
 BARCODE_HEIGHT_MM = 7.0        # barcode bar height
-BARCODE_WIDTH_SCALE = 1.3      # widen barcode to ~130% of base width
+BARCODE_WIDTH_SCALE = 1.8      # widen barcode to ~130% of base width
 HR_GAP_MM = 4.0                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
 TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
-BOTTOM_DM_BOTTOM_PAD_MM = 6.0  # bottom white margin under bottom DM
+BOTTOM_DM_BOTTOM_PAD_MM = 3.5  # bottom white margin under bottom DM
 
 PAGE_W = LABEL_W_MM * mm
 PAGE_H = LABEL_H_MM * mm
