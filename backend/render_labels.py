@@ -254,9 +254,8 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawString(SIDE_MARGIN_MM * mm, text_y, f"Size: {size}")
         text_y -= BODY_PT * 1.4
 
-    # ---- BOTTOM DM ----
     bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
-    bottom_dm_x = 1.0 * mm  # also close to left edge
+    bottom_dm_x = 1.0 * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
     # ---- BOTTOM SKU (mirror top spacing/centering) ----
