@@ -33,13 +33,13 @@ BC_SIDE_MARGIN_MM = 0.2        # no side margin => max barcode width
 DM_SIZE_MM = 21.0              # DataMatrix box size (was 14.0; +50% taller/wider)
 DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
-UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
-BARCODE_TOP_GAP_MM = 10.0      # gap from UID to barcode (moves barcode up)
+UID_GAP_MM = 3.5               # gap from bottom of top DM to UID baseline
+BARCODE_TOP_GAP_MM = 5.0      # gap from UID to barcode (moves barcode up)
 BARCODE_HEIGHT_MM = 5.0        # shorter bars => visually thinner barcode
-HR_GAP_MM = 4.0                # gap from bars to 13-digit text
-DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
-TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
-BOTTOM_DM_BOTTOM_PAD_MM = 6.0  # bottom white margin under bottom DM
+HR_GAP_MM = 2.0                # gap from bars to 13-digit text
+DIVIDER_GAP_MM = 2.0           # gap from HR digits to divider line
+TEXT_TOP_GAP_MM = 2.0          # gap from divider to first product line
+BOTTOM_DM_BOTTOM_PAD_MM = 2.0  # bottom white margin under bottom DM
 
 PAGE_W = LABEL_W_MM * mm
 PAGE_H = LABEL_H_MM * mm
