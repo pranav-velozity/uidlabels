@@ -41,6 +41,8 @@ HR_GAP_MM = 4.0                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
 TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
 BOTTOM_DM_BOTTOM_PAD_MM = 3.0  # bottom white margin under bottom DM
+MIDDLE_UPSHIFT_MM = 10.0   # pushes UID + barcode + divider + text upward
+
 
 PAGE_W = LABEL_W_MM * mm
 PAGE_H = LABEL_H_MM * mm
@@ -172,7 +174,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
 
     # ---- TOP DM ----
     dm_size_pt = DM_SIZE_MM * mm
-    top_dm_x = SIDE_MARGIN_MM * mm
+    top_dm_x = 1.0 * mm
     top_dm_y = PAGE_H - TOP_MARGIN_MM * mm - dm_size_pt
     draw_datamatrix(c, dm_img, top_dm_x, top_dm_y, dm_size_pt)
 
@@ -197,7 +199,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawRightString(sku_x, small_y_top, sku_small)
 
     # ---- UID (centered, below DM block) ----
-    uid_y = top_dm_y - UID_GAP_MM * mm
+    uid_y = top_dm_y - (UID_GAP_MM * mm) + (MIDDLE_UPSHIFT_MM * mm)
     c.setFont(BODY_FONT, BODY_PT)
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
@@ -207,25 +209,25 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     # (Centered horizontally.)
     bc_full_w = PAGE_W * 1.40
 
-    bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
+    bc_y = uid_y - (BARCODE_TOP_GAP_MM * mm) + (MIDDLE_UPSHIFT_MM * mm)
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
 
 
     # Human-readable digits
-    hr_y = bc_y - HR_GAP_MM * mm
+    hr_y = bc_y - (HR_GAP_MM * mm)
     human_text = ean or sku or ""
     if human_text:
         c.setFont(BODY_FONT, BODY_PT)
         c.drawCentredString(PAGE_W / 2.0, hr_y, human_text)
 
     # ---- DIVIDER ----
-    divider_y = hr_y - DIVIDER_GAP_MM * mm
+    divider_y = hr_y - (DIVIDER_GAP_MM * mm)
     c.setLineWidth(0.4)
     c.line(SIDE_MARGIN_MM * mm, divider_y,
            PAGE_W - SIDE_MARGIN_MM * mm, divider_y)
 
     # ---- PRODUCT / COLOR / SIZE ----
-    text_y = divider_y - TEXT_TOP_GAP_MM * mm
+    text_y = divider_y - (TEXT_TOP_GAP_MM * mm)
     max_text_width = PAGE_W - 2 * SIDE_MARGIN_MM * mm
 
     c.setFont(BODY_FONT, BODY_PT)
@@ -243,8 +245,9 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         text_y -= BODY_PT * 1.4
 
     # ---- BOTTOM DM ----
-    bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
-    bottom_dm_x = SIDE_MARGIN_MM * mm
+    # Lower the bottom DM by 4 mm extra
+bottom_dm_y = (BOTTOM_DM_BOTTOM_PAD_MM * mm) - (8 * mm)
+    bottom_dm_x = 1.0 * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
     # ---- BOTTOM SKU (mirror top) ----
