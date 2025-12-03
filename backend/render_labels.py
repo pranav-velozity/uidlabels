@@ -28,22 +28,22 @@ BIG_NUM_PT = 16.0
 
 # Margins & sizes
 TOP_MARGIN_MM = 4.0            # top margin
-SIDE_MARGIN_MM = 3.0           # left/right margin for text
+SIDE_MARGIN_MM = 3.0           # left/right text margin
 DM_LEFT_MM = 1.0               # left offset for DataMatrix (near edge)
 DM_SIZE_MM = 25.0              # DataMatrix box size (top + bottom)
 DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
 # Vertical distances
 UID_GAP_MM = 5.0               # gap from bottom of top DM to UID
-BARCODE_TOP_GAP_MM = 8.0       # gap from UID to top of barcode
+BARCODE_TOP_GAP_MM = 8.0       # gap from UID to barcode
 BARCODE_HEIGHT_MM = 7.0        # bar height
 HR_GAP_MM = 3.0                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider
 TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
 BOTTOM_DM_BOTTOM_PAD_MM = 2.0  # space from bottom edge to bottom DM
 
-# Move the whole middle block (UID + barcode + text) upward
-MIDDLE_UPSHIFT_MM = 8.0
+# Barcode horizontal margin (small so it stretches wide)
+BC_SIDE_MARGIN_MM = 0.5
 
 PAGE_W = LABEL_W_MM * mm
 PAGE_H = LABEL_H_MM * mm
@@ -164,7 +164,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     # DataMatrix payload: STYLE-SKU;UID
     dm_payload = f"{style}-{sku};{uid}" if (style and sku and uid) else ""
 
-    # Drawing colours (text black, barcode slightly lighter)
+    # Default drawing colour for text / lines
     c.setFillColorRGB(0, 0, 0)
     c.setStrokeColorRGB(0, 0, 0)
 
@@ -172,11 +172,11 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
 
     # ---- TOP DM ----
     dm_size_pt = DM_SIZE_MM * mm
-    top_dm_x = 1.0 * mm  # pushed closer to left edge
+    top_dm_x = DM_LEFT_MM * mm  # close to left edge
     top_dm_y = PAGE_H - TOP_MARGIN_MM * mm - dm_size_pt
     draw_datamatrix(c, dm_img, top_dm_x, top_dm_y, dm_size_pt)
 
-    # ---- TOP SKU (small above big, centred on DM horizontally) ----
+    # ---- TOP SKU (small above big, aligned to right) ----
     sku_small, sku_big = split_sku(sku)
     sku_x = PAGE_W - SIDE_MARGIN_MM * mm
 
@@ -190,9 +190,9 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     elif sku:
         c.drawRightString(sku_x, big_y_top, sku)
 
-    # Small number baseline above big, with comfortable gap
+    # Small number baseline above big
     c.setFont(BODY_FONT, BODY_PT)
-    small_y_top = big_y_top + 5.0 * mm
+    small_y_top = big_y_top + 4.0 * mm
     if sku_small:
         c.drawRightString(sku_x, small_y_top, sku_small)
 
@@ -202,18 +202,12 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-    # ---- BARCODE (stretched horizontally, a bit lighter) ----
+    # ---- BARCODE (wide, lighter) ----
     bc_full_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
     bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
-
-    # draw barcode in dark gray instead of pure black
-    c.saveState()
-    c.setStrokeColorRGB(0.2, 0.2, 0.2)
-    c.setFillColorRGB(0.2, 0.2, 0.2)
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
-    c.restoreState()
 
-    # Human-readable digits (more gap below bars)
+    # Human-readable digits
     hr_y = bc_y - HR_GAP_MM * mm
     human_text = ean or sku or ""
     if human_text:
@@ -254,11 +248,12 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawString(SIDE_MARGIN_MM * mm, text_y, f"Size: {size}")
         text_y -= BODY_PT * 1.4
 
+    # ---- BOTTOM DM ----
     bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
-    bottom_dm_x = 1.0 * mm
+    bottom_dm_x = DM_LEFT_MM * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
-    # ---- BOTTOM SKU (mirror top spacing/centering) ----
+    # ---- BOTTOM SKU ----
     center_y_dm_bottom = bottom_dm_y + dm_size_pt / 2.0
     sku_x_bottom = sku_x
 
@@ -273,7 +268,6 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     small_y_bottom = big_y_bottom + 5.0 * mm
     if sku_small:
         c.drawRightString(sku_x_bottom, small_y_bottom, sku_small)
-
 
 
 # ========= BATCH PIPELINE =========
