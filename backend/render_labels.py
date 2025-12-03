@@ -89,7 +89,7 @@ def draw_barcode(c: canvas.Canvas, payload: str,
                  x_center_pt: float, y_pt: float,
                  target_width_pt: float,
                  bar_height_mm: float = BARCODE_HEIGHT_MM):
-    """Draw Code128 barcode centered at x_center, scaled to target width."""
+    """Draw Code128 barcode centered at x_center, scaled to target width (lighter bars)."""
     if not payload:
         payload = "000"
 
@@ -98,12 +98,21 @@ def draw_barcode(c: canvas.Canvas, payload: str,
     if bc_width == 0:
         return
 
+    # scale to fill desired width
     scale_x = target_width_pt / bc_width
 
     c.saveState()
+
+    # 🔹 Make bars dark gray instead of pure black (lighter but still very scannable)
+    # You can tweak 0.12 → 0.15 or 0.18 if you later want it even lighter.
+    c.setFillColorRGB(0.12, 0.12, 0.12)
+    c.setStrokeColorRGB(0.12, 0.12, 0.12)
+
+    # Position and scale
     c.translate(x_center_pt - (target_width_pt / 2.0), y_pt)
     c.scale(scale_x, 1.0)
     bc.drawOn(c, 0, 0)
+
     c.restoreState()
 
 
