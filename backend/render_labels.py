@@ -103,8 +103,7 @@ def draw_barcode(c: canvas.Canvas, payload: str,
 
     c.saveState()
 
-    # 🔹 Make bars dark gray instead of pure black (lighter but still very scannable)
-    # You can tweak 0.12 → 0.15 or 0.18 if you later want it even lighter.
+    # Lighter than pure black, but still very scannable
     c.setFillColorRGB(0.12, 0.12, 0.12)
     c.setStrokeColorRGB(0.12, 0.12, 0.12)
 
@@ -238,9 +237,9 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawString(SIDE_MARGIN_MM * mm, text_y, f"Size: {size}")
         text_y -= BODY_PT * 1.4
 
-      # ---- BOTTOM DM ----
+    # ---- BOTTOM DM ----
     bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
-    bottom_dm_x = 1.0 * mm
+    bottom_dm_x = DM_LEFT_MM * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
     # ---- BOTTOM SKU ----
@@ -258,6 +257,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     small_y_bottom = big_y_bottom + 5.0 * mm
     if sku_small:
         c.drawRightString(sku_x_bottom, small_y_bottom, sku_small)
+
 
 # ========= BATCH PIPELINE =========
 
