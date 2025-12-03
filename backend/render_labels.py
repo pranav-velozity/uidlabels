@@ -27,15 +27,15 @@ BODY_PT = 7.0
 BIG_NUM_PT = 16.0
 
 # Margins & sizes
-TOP_MARGIN_MM = 4.0            # top white margin
-SIDE_MARGIN_MM = 3.0           # left/right white margin for text/DM
-BC_SIDE_MARGIN_MM = 0.5        # even smaller margin => wider barcode
-DM_SIZE_MM = 14.0              # DataMatrix box size
+TOP_MARGIN_MM = 4.0            # (still used for other spacing, not top DM)
+SIDE_MARGIN_MM = 3.0           # left/right white margin for text
+BC_SIDE_MARGIN_MM = 0.2        # no side margin => max barcode width
+DM_SIZE_MM = 21.0              # DataMatrix box size (was 14.0; +50% taller/wider)
 DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
 UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
 BARCODE_TOP_GAP_MM = 10.0      # gap from UID to barcode (moves barcode up)
-BARCODE_HEIGHT_MM = 7.0        # barcode bar height (3/4 of previous ~9)
+BARCODE_HEIGHT_MM = 5.0        # shorter bars => visually thinner barcode
 HR_GAP_MM = 4.0                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 3.0           # gap from HR digits to divider line
 TEXT_TOP_GAP_MM = 3.0          # gap from divider to first product line
@@ -113,6 +113,9 @@ def draw_barcode(c: canvas.Canvas, payload: str,
     scale_x = target_width_pt / bc_width
 
     c.saveState()
+    # Use dark gray instead of pure black for a lighter visual weight
+    c.setFillColorRGB(0.15, 0.15, 0.15)
+    c.setStrokeColorRGB(0.15, 0.15, 0.15)
     c.translate(x_center_pt - (target_width_pt / 2.0), y_pt)
     c.scale(scale_x, 1.0)
     bc.drawOn(c, 0, 0)
@@ -175,8 +178,8 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
 
     # ---- TOP DM ----
     dm_size_pt = DM_SIZE_MM * mm
-    top_dm_x = SIDE_MARGIN_MM * mm
-    top_dm_y = PAGE_H - TOP_MARGIN_MM * mm - dm_size_pt
+    top_dm_x = 0 * mm  # flush to left edge of label
+    top_dm_y = PAGE_H - dm_size_pt  # flush to top edge (no top white margin)
     draw_datamatrix(c, dm_img, top_dm_x, top_dm_y, dm_size_pt)
 
     # ---- TOP SKU (small above big, more spaced, centred on DM) ----
