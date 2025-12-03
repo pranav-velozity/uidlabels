@@ -117,8 +117,8 @@ def draw_barcode(c: canvas.Canvas, payload: str,
 
     c.saveState()
     # Use dark gray instead of pure black for a lighter visual weight
-    c.setFillColorRGB(0.25, 0.25, 0.25)
-    c.setStrokeColorRGB(0.25, 0.25, 0.25)
+    c.setFillColorRGB(0.20, 0.20, 0.20)
+    c.setStrokeColorRGB(0.20, 0.20, 0.20)
     c.translate(x_center_pt - (target_width_pt / 2.0), y_pt)
     c.scale(scale_x, 1.0)
     bc.drawOn(c, 0, 0)
@@ -212,7 +212,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
     # ---- BARCODE (shorter, wider) ----
-    bc_full_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
+    bc_full_w = 1.3 * (PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm)
     bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
     draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
 
