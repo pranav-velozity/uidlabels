@@ -250,7 +250,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
 
     # ---- BOTTOM DM ----
     bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
-    bottom_dm_x = DM_LEFT_MM * mm  # or 1.0 * mm if you prefer, but keep indent
+    bottom_dm_x = DM_LEFT_MM * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
     # ---- BOTTOM SKU ----
@@ -268,7 +268,6 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     small_y_bottom = big_y_bottom + 5.0 * mm
     if sku_small:
         c.drawRightString(sku_x_bottom, small_y_bottom, sku_small)
-
 
 
 # ========= BATCH PIPELINE =========
