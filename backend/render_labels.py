@@ -164,18 +164,19 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     # DataMatrix payload: STYLE-SKU;UID
     dm_payload = f"{style}-{sku};{uid}" if (style and sku and uid) else ""
 
+    # Drawing colours (text black, barcode slightly lighter)
     c.setFillColorRGB(0, 0, 0)
     c.setStrokeColorRGB(0, 0, 0)
 
     dm_img = make_dm_image(dm_payload)
 
-    # ---- TOP DM (left edge) ----
+    # ---- TOP DM ----
     dm_size_pt = DM_SIZE_MM * mm
-    top_dm_x = DM_LEFT_MM * mm
+    top_dm_x = 1.0 * mm  # pushed closer to left edge
     top_dm_y = PAGE_H - TOP_MARGIN_MM * mm - dm_size_pt
     draw_datamatrix(c, dm_img, top_dm_x, top_dm_y, dm_size_pt)
 
-    # ---- TOP SKU (small above big, aligned to right) ----
+    # ---- TOP SKU (small above big, centred on DM horizontally) ----
     sku_small, sku_big = split_sku(sku)
     sku_x = PAGE_W - SIDE_MARGIN_MM * mm
 
@@ -189,24 +190,30 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     elif sku:
         c.drawRightString(sku_x, big_y_top, sku)
 
-    # Small number baseline above big
+    # Small number baseline above big, with comfortable gap
     c.setFont(BODY_FONT, BODY_PT)
-    small_y_top = big_y_top + 4.0 * mm
+    small_y_top = big_y_top + 5.0 * mm
     if sku_small:
         c.drawRightString(sku_x, small_y_top, sku_small)
 
-    # ---- UID (centered, below DM block, shifted up) ----
-    uid_y = top_dm_y - UID_GAP_MM * mm + MIDDLE_UPSHIFT_MM * mm
+    # ---- UID (centered, below DM block) ----
+    uid_y = top_dm_y - UID_GAP_MM * mm
     c.setFont(BODY_FONT, BODY_PT)
     if uid:
         c.drawCentredString(PAGE_W / 2.0, uid_y, uid)
 
-    # ---- BARCODE (wide, shifted up) ----
-    bc_full_w = PAGE_W * 0.90  # 90% of label width
-    bc_y = uid_y - BARCODE_TOP_GAP_MM * mm + MIDDLE_UPSHIFT_MM * mm
-    draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
+    # ---- BARCODE (stretched horizontally, a bit lighter) ----
+    bc_full_w = PAGE_W - 2 * BC_SIDE_MARGIN_MM * mm
+    bc_y = uid_y - BARCODE_TOP_GAP_MM * mm
 
-    # Human-readable digits
+    # draw barcode in dark gray instead of pure black
+    c.saveState()
+    c.setStrokeColorRGB(0.2, 0.2, 0.2)
+    c.setFillColorRGB(0.2, 0.2, 0.2)
+    draw_barcode(c, ean or sku or "000", PAGE_W / 2.0, bc_y, bc_full_w)
+    c.restoreState()
+
+    # Human-readable digits (more gap below bars)
     hr_y = bc_y - HR_GAP_MM * mm
     human_text = ean or sku or ""
     if human_text:
@@ -216,16 +223,26 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     # ---- DIVIDER ----
     divider_y = hr_y - DIVIDER_GAP_MM * mm
     c.setLineWidth(0.4)
-    c.line(SIDE_MARGIN_MM * mm, divider_y,
-           PAGE_W - SIDE_MARGIN_MM * mm, divider_y)
+    c.line(
+        SIDE_MARGIN_MM * mm,
+        divider_y,
+        PAGE_W - SIDE_MARGIN_MM * mm,
+        divider_y,
+    )
 
     # ---- PRODUCT / COLOR / SIZE ----
     text_y = divider_y - TEXT_TOP_GAP_MM * mm
     max_text_width = PAGE_W - 2 * SIDE_MARGIN_MM * mm
 
     c.setFont(BODY_FONT, BODY_PT)
-    for line in wrap_text(c, product, max_text_width,
-                          font_name=BODY_FONT, font_size=BODY_PT, max_lines=2):
+    for line in wrap_text(
+        c,
+        product,
+        max_text_width,
+        font_name=BODY_FONT,
+        font_size=BODY_PT,
+        max_lines=2,
+    ):
         c.drawString(SIDE_MARGIN_MM * mm, text_y, line)
         text_y -= BODY_PT * 1.4
 
@@ -239,10 +256,10 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
 
     # ---- BOTTOM DM ----
     bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
-    bottom_dm_x = DM_LEFT_MM * mm
+    bottom_dm_x = 1.0 * mm  # also close to left edge
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
-    # ---- BOTTOM SKU ----
+    # ---- BOTTOM SKU (mirror top spacing/centering) ----
     center_y_dm_bottom = bottom_dm_y + dm_size_pt / 2.0
     sku_x_bottom = sku_x
 
@@ -257,6 +274,7 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
     small_y_bottom = big_y_bottom + 5.0 * mm
     if sku_small:
         c.drawRightString(sku_x_bottom, small_y_bottom, sku_small)
+
 
 
 # ========= BATCH PIPELINE =========
