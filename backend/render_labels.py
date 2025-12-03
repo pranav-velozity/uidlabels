@@ -30,7 +30,7 @@ BIG_NUM_PT = 16.0
 TOP_MARGIN_MM = 4.0            # top white margin
 SIDE_MARGIN_MM = 3.0           # left/right white margin for text/DM
 BC_SIDE_MARGIN_MM = 0.5        # base margin for barcode
-DM_SIZE_MM = 18.0              # DataMatrix box size (~30% bigger than 14mm)
+DM_SIZE_MM = 25.0              # DataMatrix box size (~30% bigger than 14mm)
 DM_QUIET_MM = 1.0              # quiet zone inside DM box
 
 UID_GAP_MM = 6.0               # gap from bottom of top DM to UID baseline
