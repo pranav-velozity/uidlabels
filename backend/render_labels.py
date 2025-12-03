@@ -238,12 +238,12 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawString(SIDE_MARGIN_MM * mm, text_y, f"Size: {size}")
         text_y -= BODY_PT * 1.4
 
-    # ---- BOTTOM DM (left edge, lowered) ----
-    bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm  # small gap from bottom
-    bottom_dm_x = DM_LEFT_MM * mm
+      # ---- BOTTOM DM ----
+    bottom_dm_y = BOTTOM_DM_BOTTOM_PAD_MM * mm
+    bottom_dm_x = 1.0 * mm
     draw_datamatrix(c, dm_img, bottom_dm_x, bottom_dm_y, dm_size_pt)
 
-    # ---- BOTTOM SKU (mirror top spacing/centering) ----
+    # ---- BOTTOM SKU ----
     center_y_dm_bottom = bottom_dm_y + dm_size_pt / 2.0
     sku_x_bottom = sku_x
 
@@ -255,10 +255,9 @@ def draw_single_label(c: canvas.Canvas, row: pd.Series):
         c.drawRightString(sku_x_bottom, big_y_bottom, sku)
 
     c.setFont(BODY_FONT, BODY_PT)
-    small_y_bottom = big_y_bottom + 4.0 * mm
+    small_y_bottom = big_y_bottom + 5.0 * mm
     if sku_small:
         c.drawRightString(sku_x_bottom, small_y_bottom, sku_small)
-
 
 # ========= BATCH PIPELINE =========
 
