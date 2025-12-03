@@ -39,7 +39,7 @@ BARCODE_HEIGHT_MM = 5.0        # shorter bars => visually thinner barcode
 HR_GAP_MM = 2.5                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 2.5           # gap from HR digits to divider line
 TEXT_TOP_GAP_MM = 2.5          # gap from divider to first product line
-BOTTOM_DM_BOTTOM_PAD_MM = 2.0  # bottom white margin under bottom DM
+BOTTOM_DM_BOTTOM_PAD_MM = 1.0  # bottom white margin under bottom DM
 
 PAGE_W = LABEL_W_MM * mm
 PAGE_H = LABEL_H_MM * mm
@@ -84,18 +84,21 @@ def make_dm_image(payload: str) -> ImageReader | None:
 def draw_datamatrix(c: canvas.Canvas, img: ImageReader | None,
                     x_pt: float, y_pt: float,
                     box_size_pt: float):
-    """Draw DM image in a square box with quiet zone margin."""
+    """Draw DM image filling the box (no extra margins here)."""
     if img is None:
         return
-    inner = box_size_pt - DM_QUIET_MM * mm * 2
-    iw, ih = img.getSize()
-    scale = min(inner / iw, inner / ih, 1.0)
-    iw_scaled = iw * scale
-    ih_scaled = ih * scale
-    dx = x_pt + DM_QUIET_MM * mm + (inner - iw_scaled) / 2
-    dy = y_pt + DM_QUIET_MM * mm + (inner - ih_scaled) / 2
-    c.drawImage(img, dx, dy, width=iw_scaled, height=ih_scaled, mask="auto")
 
+    # Stretch the image to exactly the square box. The PNG already
+    # includes its own quiet zone, so we don't add another one.
+    c.drawImage(
+        img,
+        x_pt,
+        y_pt,
+        width=box_size_pt,
+        height=box_size_pt,
+        preserveAspectRatio=True,
+        mask="auto",
+    )
 
 def draw_barcode(c: canvas.Canvas, payload: str,
                  x_center_pt: float, y_pt: float,
