@@ -113,16 +113,20 @@ def draw_barcode(c: canvas.Canvas, payload: str,
     if bc_width == 0:
         return
 
-    scale_x = 1.2 * (target_width_pt / bc_width)
+    # desired width is 1.2x the target width
+    desired_width_pt = 1.2 * target_width_pt
+    scale_x = desired_width_pt / bc_width
 
     c.saveState()
     # Use dark gray instead of pure black for a lighter visual weight
     c.setFillColorRGB(0.45, 0.45, 0.45)
     c.setStrokeColorRGB(0.45, 0.45, 0.45)
-    c.translate(x_center_pt - (target_width_pt / 2.0), y_pt)
+    # center using the actual rendered width
+    c.translate(x_center_pt - (desired_width_pt / 2.0), y_pt)
     c.scale(scale_x, 1.0)
     bc.drawOn(c, 0, 0)
     c.restoreState()
+
 
 
 def wrap_text(c: canvas.Canvas, text: str, max_width_pt: float,
