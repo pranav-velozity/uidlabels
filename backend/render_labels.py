@@ -113,7 +113,7 @@ def draw_barcode(c: canvas.Canvas, payload: str,
     if bc_width == 0:
         return
 
-    scale_x = target_width_pt / bc_width
+    scale_x = 1.2 * (target_width_pt / bc_width)
 
     c.saveState()
     # Use dark gray instead of pure black for a lighter visual weight
