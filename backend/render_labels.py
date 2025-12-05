@@ -38,7 +38,7 @@ BARCODE_TOP_GAP_MM = 7.0      # gap from UID to barcode (moves barcode up)
 BARCODE_HEIGHT_MM = 5.0        # shorter bars => visually thinner barcode
 HR_GAP_MM = 2.5                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 2.5           # gap from HR digits to divider line
-TEXT_TOP_GAP_MM = 3.5          # gap from divider to first product line
+TEXT_TOP_GAP_MM = 5.0          # gap from divider to first product line
 BOTTOM_DM_BOTTOM_PAD_MM = 1.0  # bottom white margin under bottom DM
 
 PAGE_W = LABEL_W_MM * mm
@@ -117,8 +117,8 @@ def draw_barcode(c: canvas.Canvas, payload: str,
 
     c.saveState()
     # Use dark gray instead of pure black for a lighter visual weight
-    c.setFillColorRGB(0.20, 0.20, 0.20)
-    c.setStrokeColorRGB(0.20, 0.20, 0.20)
+    c.setFillColorRGB(0.45, 0.45, 0.45)
+    c.setStrokeColorRGB(0.45, 0.45, 0.45)
     c.translate(x_center_pt - (target_width_pt / 2.0), y_pt)
     c.scale(scale_x, 1.0)
     bc.drawOn(c, 0, 0)
