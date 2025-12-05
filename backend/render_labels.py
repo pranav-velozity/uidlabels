@@ -38,7 +38,7 @@ BARCODE_TOP_GAP_MM = 7.0      # gap from UID to barcode (moves barcode up)
 BARCODE_HEIGHT_MM = 5.0        # shorter bars => visually thinner barcode
 HR_GAP_MM = 2.5                # gap from bars to 13-digit text
 DIVIDER_GAP_MM = 2.5           # gap from HR digits to divider line
-TEXT_TOP_GAP_MM = 7.5          # gap from divider to first product line
+TEXT_TOP_GAP_MM = 8.5          # gap from divider to first product line
 BOTTOM_DM_BOTTOM_PAD_MM = 1.0  # bottom white margin under bottom DM
 
 PAGE_W = LABEL_W_MM * mm
