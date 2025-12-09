@@ -119,8 +119,8 @@ def draw_barcode(c: canvas.Canvas, payload: str,
 
     c.saveState()
     # Use dark gray instead of pure black for a lighter visual weight
-    c.setFillColorRGB(0.55, 0.55, 0.55)
-    c.setStrokeColorRGB(0.55, 0.55, 0.55)
+    c.setFillColorRGB(0.45, 0.45, 0.45)
+    c.setStrokeColorRGB(0.45, 0.45, 0.45)
     # center using the actual rendered width
     c.translate(x_center_pt - (desired_width_pt / 2.0), y_pt)
     c.scale(scale_x, 1.0)
