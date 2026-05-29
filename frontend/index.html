@@ -214,14 +214,14 @@
     return img;
   }
 
-  // UID: TIBC + 9 [0-9A-Z]
+  // UID: TIBC (always uppercase) + 9 chars from [0-9a-z] (never uppercase)
   function generateUID(){
-    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
     while(true){
-      let s = 'TIBC';
-      for(let i=0;i<9;i++){
-        s += chars[Math.floor(Math.random()*chars.length)];
-      }
+      // Prefix stays uppercase; suffix is forced lowercase as a safety net.
+      let s = 'TIBC' + Array.from({length:9}, () =>
+        chars[Math.floor(Math.random()*chars.length)]
+      ).join('').toLowerCase();
       if(!usedUIDs.has(s)){ usedUIDs.add(s); return s; }
     }
   }
